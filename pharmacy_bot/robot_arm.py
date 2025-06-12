@@ -12,7 +12,7 @@ from robot_control.onrobot import RG
 
 # DSR 로봇 API
 import DR_init
-from DSR_ROBOT2 import movej, movel, get_current_posx, mwait
+from DSR_ROBOT2 import movej, movel, get_current_posx, mwait, set_tool, set_tcp
 
 
 # ─────────────── 로봇 및 그리퍼 설정 ───────────────
@@ -70,6 +70,9 @@ class RobotArm(Node):
         """
         로봇팔을 초기 관절 자세로 이동시키고 그리퍼를 열어서 준비시킴
         """
+        set_tool("TW_brkt")       # 사전에 등록된 툴 이름
+        set_tcp("RG2_brkt")       # 사전에 등록된 TCP 이름
+
         JReady = [0, 0, 90, 0, 90, 0]  # 기본 posture (rad 아님)
         movej(JReady, vel=VELOCITY, acc=ACC)
         gripper.open_gripper()
