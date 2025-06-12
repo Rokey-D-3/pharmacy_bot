@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
-from srv import GetMedicineName, DetectMedicinePose, PickupMedicine
+from pharmacy_bot.srv import GetMedicineName, DetectMedicinePose, PickupMedicine
 from geometry_msgs.msg import Pose
 
 import rclpy

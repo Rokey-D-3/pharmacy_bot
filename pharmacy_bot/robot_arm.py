@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Pose
-from srv import PickupMedicine  # pose → bool 응답 서비스
+from pharmacy_bot.srv import PickupMedicine  # pose → bool 응답 서비스
 
 import numpy as np
 import time

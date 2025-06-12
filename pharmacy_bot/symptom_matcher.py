@@ -10,7 +10,7 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
 # 서비스 타입 : string symptom → string medicine
-from srv import GetMedicineName
+from pharmacy_bot.srv import GetMedicineName
 
 
 class SymptomMatcher(Node):
