@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # 기본 시스템 및 ROS 관련 모듈
 import os
 import rclpy

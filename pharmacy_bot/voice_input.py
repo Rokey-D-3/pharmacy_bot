@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # ROS 2 기본 모듈
 import rclpy
 from rclpy.node import Node

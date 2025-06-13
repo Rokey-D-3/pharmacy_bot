@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # ROS2 및 센서 메시지, 이미지 변환 관련 모듈
 import rclpy
 from rclpy.node import Node
