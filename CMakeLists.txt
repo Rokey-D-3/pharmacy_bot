@@ -1,13 +1,3 @@
-# find_package(rosidl_default_generators REQUIRED)
-
-# rosidl_generate_interfaces(${PROJECT_NAME}
-#   "srv/GetMedicineName.srv"
-#   "srv/DetectMedicinePose.srv"
-#   "srv/PickupMedicine.srv"
-# )
-
-# ament_export_dependencies(rosidl_default_runtime)
-
 cmake_minimum_required(VERSION 3.5)
 project(pharmacy_bot)
 
@@ -35,6 +25,12 @@ install(
     pharmacy_bot/robot_arm.py
     pharmacy_bot/symptom_matcher_test.py
   DESTINATION lib/${PROJECT_NAME}
+)
+
+# ───── robot_control 서브모듈 설치 ─────
+install(
+  DIRECTORY pharmacy_bot/robot_control
+  DESTINATION lib/${PROJECT_NAME}/pharmacy_bot
 )
 
 # ───── 리소스 (YOLO 모델, 클래스 파일 등) 설치 ─────
