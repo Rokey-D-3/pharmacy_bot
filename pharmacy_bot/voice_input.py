@@ -11,13 +11,13 @@ import time
 import pyaudio
 import numpy as np
 import tempfile
-import pyttsx3  # 텍스트를 음성으로 읽어주는 라이브러리
+import pyttsx3
 import sounddevice as sd
 import scipy.io.wavfile as wav
 import openai
 from scipy.signal import resample
 from dotenv import load_dotenv
-from openwakeword.model import Model  # WakeupWord 모델 사용
+from openwakeword.model import Model
 
 # ────────────── 약 이름 및 종료 키워드 ──────────────
 AVAILABLE_DRUGS = [

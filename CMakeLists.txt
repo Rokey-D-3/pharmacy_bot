@@ -33,14 +33,8 @@ install(
     pharmacy_bot/symptom_matcher.py
     pharmacy_bot/detector.py
     pharmacy_bot/robot_arm.py
+    pharmacy_bot/symptom_matcher_test.py
   DESTINATION lib/${PROJECT_NAME}
-)
-
-# ───── Python 모듈 설치 (__init__.py 등) ─────
-install(
-  DIRECTORY pharmacy_bot/
-  DESTINATION lib/${PROJECT_NAME}
-  FILES_MATCHING PATTERN "*.py"
 )
 
 # ───── 리소스 (YOLO 모델, 클래스 파일 등) 설치 ─────

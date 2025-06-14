@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-# pharmacy_bot/build_vector_db.py
 
+# pharmacy_bot/build_vector_db.py
 import os
 from dotenv import load_dotenv
 
-from langchain.vectorstores import Chroma
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.document_loaders import TextLoader
+# from langchain.vectorstores import Chroma
+from langchain_community.vectorstores import Chroma
+# from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
+# from langchain.document_loaders import TextLoader
+from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 def main():

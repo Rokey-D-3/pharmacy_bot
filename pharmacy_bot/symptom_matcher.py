@@ -14,23 +14,28 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 # ROS 2 서비스
 from pharmacy_bot.srv import GetMedicineName
 
+
 class SymptomMatcher(Node):
     def __init__(self):
         super().__init__('symptom_matcher')
 
-        # .env에서 OpenAI API 키 로드
-        package_path = os.getcwd()
-        load_dotenv(dotenv_path=os.path.join(package_path, ".env"))
-        openai_api_key = os.getenv("OPENAI_API_KEY")
+        # ✅ 절대 경로로 .env 로드
+        env_path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/.env")
+        loaded = load_dotenv(dotenv_path=env_path)
 
+        if not loaded:
+            self.get_logger().warn(f".env 파일을 찾을 수 없습니다: {env_path}")
+
+        openai_api_key = os.getenv("OPENAI_API_KEY")
         if not openai_api_key:
             self.get_logger().error("OPENAI_API_KEY가 설정되지 않았습니다.")
             return
 
         # LangChain 모델 및 벡터 DB 초기화
+        db_path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/resource/chroma_db")
         self.llm = ChatOpenAI(model="gpt-4o", temperature=0.3, openai_api_key=openai_api_key)
         self.embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
-        self.db = Chroma(persist_directory="./chroma_db", embedding_function=self.embeddings)
+        self.db = Chroma(persist_directory=db_path, embedding_function=self.embeddings)
         self.retriever = self.db.as_retriever(search_kwargs={"k": 3})
 
         # ROS 2 서비스 생성
@@ -38,7 +43,6 @@ class SymptomMatcher(Node):
         self.get_logger().info("SymptomMatcher 실행됨 (/get_medicine_name)")
 
     def translate_symptom(self, symptom: str) -> str:
-        """증상을 영어 의학 용어로 번역"""
         prompt = PromptTemplate(
             input_variables=["symptom"],
             template="""
@@ -51,21 +55,18 @@ class SymptomMatcher(Node):
         return translated.content.strip()
 
     def retrieve_context(self, translated_query: str) -> str:
-        """Vector DB에서 관련 약물 설명 검색"""
         docs = self.retriever.get_relevant_documents(translated_query)
         return "\n".join([doc.page_content for doc in docs])
 
     def recommend_medicine(self, symptom: str, context: str) -> str:
-        """약 추천 및 복용 안내 포함된 LLM 출력 생성"""
         prompt = PromptTemplate(
             input_variables=["symptom", "context"],
             template="""
             당신은 반드시 다음 약물명(한글명)만 추천할 수 있습니다. 영어 이름으로 절대 출력하지 마세요.
-            
+
             출력 가능한 약물명 리스트:
             ["모드콜", "콜대원", "하이펜", "타이레놀", "다제스", "락토프린", "포비돈", "미니온", "퓨어밴드", "Rohto C3 Cube"]
-            
-            
+
             약물 복용 안내:
             - 모드콜: 하루 3회, 1회 1정 복용. 졸림 유발 가능, 운전 주의.
             - 콜대원: 하루 3회, 1회 10ml 복용. 충분한 수분 섭취 권장.
@@ -77,16 +78,15 @@ class SymptomMatcher(Node):
             - 미니온: 통증 부위에 1일 1회 부착. 피부 트러블 시 제거.
             - 퓨어밴드: 상처 부위에 부착. 오염 시 교체.
             - Rohto C3 Cube: 1회 1~2방울, 1일 3~5회 점안. 사용 후 바로 뚜껑 닫기.
-            
+
             <사용자 증상>
             {symptom}
 
             <관련 약물 판단 기준>
             {context}
-            
+
             출력 형식:
             약 이름: [약 이름1, 약 이름2, ...
-            
             복용 방법 및 주의 사항:
             - 약 이름1: (복용 방법)
             """
@@ -95,7 +95,6 @@ class SymptomMatcher(Node):
         return result.content.strip()
 
     def extract_first_drug_name(self, text: str) -> str:
-        """LLM 응답에서 첫 번째 약 이름만 추출"""
         try:
             name_section = text.split("약 이름:")[1].split("]")[0]
             drug_list = name_section.replace("[", "").split(",")
@@ -105,12 +104,10 @@ class SymptomMatcher(Node):
             return "추천 실패"
 
     def handle_symptom_request(self, request, response):
-        # 경로: pharmacy_bot/../resource/symptom_query.txt
-        package_path = os.path.dirname(__file__)
-        resource_path = os.path.abspath(os.path.join(package_path, "..", "resource", "symptom_query.txt"))
-
+        # symptom_query.txt 절대경로로 불러오기
+        symptom_path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/resource/symptom_query.txt")
         try:
-            with open(resource_path, "r", encoding="utf-8") as f:
+            with open(symptom_path, "r", encoding="utf-8") as f:
                 symptom = f.read().strip()
             self.get_logger().info(f"증상 입력 파일에서 불러옴: {symptom}")
         except Exception as e:
