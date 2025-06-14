@@ -19,7 +19,7 @@ class SymptomMatcher(Node):
     def __init__(self):
         super().__init__('symptom_matcher')
 
-        # ✅ 절대 경로로 .env 로드
+        # 절대 경로로 .env 로드
         env_path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/.env")
         loaded = load_dotenv(dotenv_path=env_path)
 
