@@ -1,3 +1,4 @@
-geometry_msgs/Pose pose
+geometry_msgs/Point[] target
+std_msgs/Int8[] width
 ---
-bool success
+bool[] success
