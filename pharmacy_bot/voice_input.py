@@ -155,12 +155,14 @@ class VoiceInputNode(Node):
 
                 mic.close_stream()
                 self.save_symptom_query()
+                self.publisher.publish(String(data="__DONE__"))
+                break
 
     def save_symptom_query(self):
         if not self.symptom_list:
             return
         query = " 그리고 ".join(self.symptom_list)
-        resource_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "resource", "symptom_query.txt"))
+        resource_path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/resource/symptom_query.txt")
         with open(resource_path, "w", encoding="utf-8") as f:
             f.write(query)
         self.get_logger().info(f"증상 저장 완료 → {resource_path}")

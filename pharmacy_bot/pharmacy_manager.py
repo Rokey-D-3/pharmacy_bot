@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -34,22 +35,34 @@ class PharmacyManager(Node):
 
     def symptom_callback(self, msg: String):
         user_input = msg.data.strip()
-        self.get_logger().info(f"입력 수신: \"{user_input}\"")
 
-        # 직접 약 이름 언급한 경우
+        # 1. 약 이름이면 바로 집기
         if user_input in AVAILABLE_DRUGS:
             self.get_logger().info(f"약 이름 직접 언급됨: {user_input}")
             self.process_medicine(user_input)
             return
 
-        # 증상으로 간주 → 약 추천 요청
-        recommended = self.call_get_medicine_name(user_input)
-        if not recommended:
-            self.get_logger().error("약 추천 실패")
+        # 2. '__DONE__' 신호가 오면 symptom_query.txt 읽고 약 추천 수행
+        if user_input == "__DONE__":
+            try:
+                path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/resource/symptom_query.txt")
+                with open(path, "r", encoding="utf-8") as f:
+                    symptom_text = f.read().strip()
+                self.get_logger().info(f"최종 증상 텍스트: {symptom_text}")
+            except Exception as e:
+                self.get_logger().error(f"symptom_query.txt 로딩 실패: {e}")
+                return
+
+            recommended = self.call_get_medicine_name(symptom_text)
+            if not recommended:
+                self.get_logger().error("약 추천 실패")
+                return
+            self.get_logger().info(f"추천된 약: {recommended}")
+            self.process_medicine(recommended)
             return
 
-        self.get_logger().info(f"추천된 약: {recommended}")
-        self.process_medicine(recommended)
+        # 그 외에는 단순 텍스트 로그만
+        self.get_logger().info(f"(참고용) 입력 수신: \"{user_input}\"")
 
     def process_medicine(self, medicine_name: str):
         position = self.call_detect_position(medicine_name)
