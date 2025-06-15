@@ -5,13 +5,14 @@ import time
 import tempfile
 import numpy as np
 import pyaudio
-import pyttsx3
 import sounddevice as sd
 import scipy.io.wavfile as wav
 from scipy.signal import resample
 from dotenv import load_dotenv
 import openai
 from openwakeword.model import Model
+from gtts import gTTS
+import playsound
 
 import rclpy
 from rclpy.node import Node
@@ -107,7 +108,6 @@ class VoiceInputNode(Node):
     def __init__(self):
         super().__init__('voice_input')
 
-        # 수정된 방식: 명시적 경로 지정
         env_path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/.env")
         load_dotenv(dotenv_path=env_path)
         self.api_key = os.getenv("OPENAI_API_KEY")
@@ -116,7 +116,7 @@ class VoiceInputNode(Node):
             self.get_logger().error(f"OPENAI_API_KEY를 찾을 수 없습니다: {env_path}")
             return
 
-        self.tts = pyttsx3.init()
+        # self.tts = pyttsx3.init()
         self.publisher = self.create_publisher(String, '/symptom_text', 10)
         self.get_logger().info("VoiceInputNode 실행됨")
 
@@ -125,8 +125,12 @@ class VoiceInputNode(Node):
 
     def speak(self, text: str):
         print(f"[robot]: {text}")
-        self.tts.say(text)
-        self.tts.runAndWait()
+        # self.tts.say(text)
+        # self.tts.runAndWait()
+        tts = gTTS(text=text, lang='ko')
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
+            tts.save(fp.name)
+            playsound.playsound(fp.name)
 
     def start_listening(self):
         mic = MicController()
