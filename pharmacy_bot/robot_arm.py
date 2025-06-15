@@ -89,6 +89,7 @@ class RobotArm(Node):
         약을 집은 후 다시 초기 위치로 복귀
         """
         pose = request.pose
+        width = request.width
 
         # ───── 위치 보정 (ROS는 m, 로봇은 mm 단위) ─────
         x = pose.position.x * 1000                     # x는 그대로
@@ -105,6 +106,7 @@ class RobotArm(Node):
         target_pos = [x, y, z, rx, ry, rz]
 
         self.get_logger().info(f"약 위치로 이동 중: {target_pos[:3]}")
+        self.get_logger().info(f"약 폭(mm)에 맞춰 그리퍼 조절 중: {width:.1f} mm")
 
         try:
             # ───── 이동 및 집기 동작 수행 ─────
@@ -116,9 +118,10 @@ class RobotArm(Node):
                 time.sleep(0.5)
             mwait()
 
-            gripper.open_gripper()   # 놓기
+            gripper.open_gripper(width_val=width)   # 놓기
             while gripper.get_status()[0]:
                 time.sleep(0.5)
+            mwait()
 
             response.success = True
             self.get_logger().info("약 집기 성공")

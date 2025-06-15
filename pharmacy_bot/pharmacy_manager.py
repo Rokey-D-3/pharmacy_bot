@@ -65,16 +65,19 @@ class PharmacyManager(Node):
         self.get_logger().info(f"(참고용) 입력 수신: \"{user_input}\"")
 
     def process_medicine(self, medicine_name: str):
-        position = self.call_detect_position(medicine_name)
-        if not position:
+        result = self.call_detect_position(medicine_name)
+        if not result:
             self.get_logger().error("약 위치 탐지 실패")
             return
 
+        position, width = result
         pose = Pose()
         pose.position.x, pose.position.y, pose.position.z = position
         pose.orientation.w = 1.0
 
-        success = self.call_pickup(pose)
+        self.get_logger().info(f"{medicine_name}의 폭: {width * 1000:.1f} mm")
+        
+        success = self.call_pickup(pose, width * 1000)
         if success:
             self.get_logger().info("약 집기 성공")
         else:
@@ -104,15 +107,16 @@ class PharmacyManager(Node):
         result = future.result()
         if not result or sum(result.depth_position) == 0.0:
             return None
-        return result.depth_position
+        return result.depth_position, result.width
 
-    def call_pickup(self, pose: Pose) -> bool:
+    def call_pickup(self, pose: Pose, width: float) -> bool:
         if not self.pickup_client.wait_for_service(timeout_sec=2.0):
             self.get_logger().error("/pickup_medicine 서비스 연결 실패")
             return False
 
         request = PickupMedicine.Request()
         request.pose = pose
+        request.width = width
         future = self.pickup_client.call_async(request)
         rclpy.spin_until_future_complete(self, future)
 

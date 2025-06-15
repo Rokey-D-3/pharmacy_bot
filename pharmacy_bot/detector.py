@@ -93,6 +93,19 @@ class DetectorNode(Node):
             self.handle_get_depth
             )
 
+        self.medicine_widths = {
+            "모드콜": 0.025,
+            "콜대원": 0.035,
+            "하이펜": 0.030,
+            "타이레놀": 0.028,
+            "다제스": 0.032,
+            "락토프린": 0.034,
+            "포비돈": 0.026,
+            "미니온": 0.031,
+            "퓨어밴드": 0.027,
+            "rohto c3 cube": 0.022
+        }
+
         self.get_logger().info("DetectorNode with YOLO + Realsense initialized.")
 
     def load_yolo_model(self):
@@ -119,7 +132,9 @@ class DetectorNode(Node):
         target = request.target.lower()
         self.get_logger().info(f"감지 요청: {target}")
         coords = self._compute_position(target)
+        width = self.medicine_widths.get(target, 0.03)
         response.depth_position = [float(x) for x in coords]
+        response.width = float(width)
         return response
 
     def _compute_position(self, target):
