@@ -29,5 +29,11 @@ def generate_launch_description():
             name='detector',
             output='screen'
         ),
+        Node(
+            package='pharmacy_bot',
+            executable='robot_arm',
+            name='robot_arm',
+            output='screen'
+        ),
         
     ])

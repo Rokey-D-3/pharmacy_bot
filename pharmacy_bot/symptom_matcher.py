@@ -19,10 +19,8 @@ class SymptomMatcher(Node):
     def __init__(self):
         super().__init__('symptom_matcher')
 
-        # 절대 경로로 .env 로드
         env_path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/.env")
         loaded = load_dotenv(dotenv_path=env_path)
-
         if not loaded:
             self.get_logger().warn(f".env 파일을 찾을 수 없습니다: {env_path}")
 
@@ -31,14 +29,12 @@ class SymptomMatcher(Node):
             self.get_logger().error("OPENAI_API_KEY가 설정되지 않았습니다.")
             return
 
-        # LangChain 모델 및 벡터 DB 초기화
         db_path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/resource/chroma_db")
         self.llm = ChatOpenAI(model="gpt-4o", temperature=0.3, openai_api_key=openai_api_key)
         self.embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
         self.db = Chroma(persist_directory=db_path, embedding_function=self.embeddings)
         self.retriever = self.db.as_retriever(search_kwargs={"k": 3})
 
-        # ROS 2 서비스 생성
         self.service = self.create_service(GetMedicineName, '/get_medicine_name', self.handle_symptom_request)
         self.get_logger().info("SymptomMatcher 실행됨 (/get_medicine_name)")
 
@@ -56,9 +52,16 @@ class SymptomMatcher(Node):
 
     def retrieve_context(self, translated_query: str) -> str:
         docs = self.retriever.get_relevant_documents(translated_query)
+        if not docs:
+            self.get_logger().warn("Vector DB에서 관련 문서를 찾지 못함.")  # 변경됨
+            return None  # 변경됨
+        for i, doc in enumerate(docs):  # 변경됨
+            self.get_logger().info(f"[유사 문서 {i+1}] {doc.page_content[:100]}...")  # 변경됨
         return "\n".join([doc.page_content for doc in docs])
 
     def recommend_medicine(self, symptom: str, context: str) -> str:
+        if not context.strip():  # 변경됨
+            self.get_logger().warn("context 없이 전체 약 리스트 출력될 가능성 있음")  # 변경됨
         prompt = PromptTemplate(
             input_variables=["symptom", "context"],
             template="""
@@ -104,12 +107,11 @@ class SymptomMatcher(Node):
             return "추천 실패"
 
     def handle_symptom_request(self, request, response):
-        # symptom_query.txt 절대경로로 불러오기
-        symptom_path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/resource/symptom_query.txt")
+        symptom_path = os.path.expanduser("/home/choin/ros2_ws/src/pharmacy_bot/resource/symptom_query.txt")
         try:
             with open(symptom_path, "r", encoding="utf-8") as f:
                 symptom = f.read().strip()
-            self.get_logger().info(f"증상 입력 파일에서 불러옴: {symptom}")
+            self.get_logger().info(f"증상 입력: {symptom}")
         except Exception as e:
             self.get_logger().error(f"symptom_query.txt 불러오기 실패: {e}")
             response.medicine = "추천 실패"
@@ -117,7 +119,13 @@ class SymptomMatcher(Node):
 
         try:
             translated = self.translate_symptom(symptom)
+            self.get_logger().info(f"번역된 증상: {translated}")  # 변경됨
+
             context = self.retrieve_context(translated)
+            if context is None:
+                response.medicine = "추천 실패 (관련 문서 없음)"  # 변경됨
+                return response
+
             result_text = self.recommend_medicine(symptom, context)
             self.get_logger().info(f"\n=== 약 추천 결과 ===\n{result_text}")
 
