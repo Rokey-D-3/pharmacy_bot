@@ -15,7 +15,7 @@ import json
 import os
 
 from ament_index_python.packages import get_package_share_directory
-from od_msg.srv import SrvDepthPosition
+from pharmacy_bot.srv import SrvDepthPosition
 
 # ──────────────────────── ImgNode (Realsense 입력 처리) ────────────────────────
 class ImgNode(Node):

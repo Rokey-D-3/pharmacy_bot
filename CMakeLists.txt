@@ -12,6 +12,7 @@ find_package(geometry_msgs REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetMedicineName.srv"
   "srv/PickupMedicine.srv"
+  "srv/SrvDepthPosition.srv"
   DEPENDENCIES std_msgs geometry_msgs
 )
 

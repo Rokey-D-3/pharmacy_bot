@@ -2,8 +2,8 @@
 
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import Pose
-from pharmacy_bot.srv import PickupMedicine  # pose → bool 응답 서비스
+from geometry_msgs.msg import Point
+from pharmacy_bot.srv import PickupMedicine  # Point → bool 응답 서비스
 
 import numpy as np
 import time
@@ -83,18 +83,18 @@ class RobotArm(Node):
     def pickup_callback(self, request, response):
         """
         서비스 콜백:
-        pose.position을 기반으로 좌표 변환 및 보정
+        point 기반으로 좌표 변환 및 보정
         약 위치로 로봇팔 이동
         그리퍼로 약 집기 -> 성공 여부 반환
         약을 집은 후 다시 초기 위치로 복귀
         """
-        pose = request.pose
+        point = request.point
         width = request.width
 
         # ───── 위치 보정 (ROS는 m, 로봇은 mm 단위) ─────
-        x = pose.position.x * 1000                     # x는 그대로
-        y = pose.position.y * 1000 + WALL_APPROACH_OFFSET  # 벽면에 붙은 약 → y+에서 접근
-        z = pose.position.z * 1000 + DEPTH_OFFSET      # z축 살짝 내려줌
+        x = point.x * 1000                     # x는 그대로
+        y = point.y * 1000 + WALL_APPROACH_OFFSET  # 벽면에 붙은 약 → y+에서 접근
+        z = point.z * 1000 + DEPTH_OFFSET      # z축 살짝 내려줌
         z = max(z, MIN_DEPTH * 1000)                   # 너무 낮아지는 것 방지
 
         # ───── Orientation 설정 (그리퍼가 -y 방향을 보게 설정) ─────
@@ -102,7 +102,7 @@ class RobotArm(Node):
         r = R.from_euler("ZYZ", [90, 90, 0], degrees=True)
         rx, ry, rz = r.as_euler("ZYZ", degrees=True)
 
-        # 최종 타겟 pose
+        # 최종 타겟 Point
         target_pos = [x, y, z, rx, ry, rz]
 
         self.get_logger().info(f"약 위치로 이동 중: {target_pos[:3]}")

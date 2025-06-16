@@ -4,10 +4,9 @@ import os
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Point
 
-from pharmacy_bot.srv import GetMedicineName, PickupMedicine
-from od_msg.srv import SrvDepthPosition
+from pharmacy_bot.srv import GetMedicineName, PickupMedicine, SrvDepthPosition
 
 AVAILABLE_DRUGS = [
     "모드콜", "콜대원", "하이펜", "타이레놀", "다제스",
@@ -71,13 +70,13 @@ class PharmacyManager(Node):
             return
 
         position, width = result
-        pose = Pose()
-        pose.position.x, pose.position.y, pose.position.z = position
-        pose.orientation.w = 1.0
+        point = Point()
+        point.x, point.y, point.z = position
+        point.orientation.w = 1.0
 
         self.get_logger().info(f"{medicine_name}의 폭: {width * 1000:.1f} mm")
         
-        success = self.call_pickup(pose, width * 1000)
+        success = self.call_pickup(point, width * 1000)
         if success:
             self.get_logger().info("약 집기 성공")
         else:
@@ -109,13 +108,13 @@ class PharmacyManager(Node):
             return None
         return result.depth_position, result.width
 
-    def call_pickup(self, pose: Pose, width: float) -> bool:
+    def call_pickup(self, point: Point, width: float) -> bool:
         if not self.pickup_client.wait_for_service(timeout_sec=2.0):
             self.get_logger().error("/pickup_medicine 서비스 연결 실패")
             return False
 
         request = PickupMedicine.Request()
-        request.pose = pose
+        request.point = point
         request.width = width
         future = self.pickup_client.call_async(request)
         rclpy.spin_until_future_complete(self, future)
