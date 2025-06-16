@@ -1,4 +1,4 @@
 geometry_msgs/Point point
-float32 width
+int width
 ---
 bool success
