@@ -18,6 +18,7 @@ class IntegratedPharmacyTester(Node):
         )
 
         self.cli = self.create_client(GetMedicineName, '/get_medicine_name')
+        self.recommend_pub = self.create_publisher(String, '/recommended_drug', 10)
 
         while not self.cli.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('symptom_matcher 서비스 대기 중...')
@@ -52,6 +53,7 @@ class IntegratedPharmacyTester(Node):
         if future.result() is not None:
             medicine = future.result().medicine
             self.get_logger().info(f"추천 약: {medicine}")
+            self.recommend_pub.publish(String(data=medicine))
         else:
             self.get_logger().error("약 추천 서비스 호출 실패")
 

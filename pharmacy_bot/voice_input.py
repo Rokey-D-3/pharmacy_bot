@@ -20,7 +20,7 @@ from std_msgs.msg import String
 
 
 # ───── 설정 상수 ─────
-EXIT_KEYWORDS = ["없어요", "괜찮아요", "아니요", "종료", "그만"]
+EXIT_KEYWORDS = ["없어요", "없어", "아니", "아니요", "종료"]
 
 # ───── 마이크 설정 ─────
 class MicConfig:
@@ -118,6 +118,7 @@ class VoiceInputNode(Node):
 
         # self.tts = pyttsx3.init()
         self.publisher = self.create_publisher(String, '/symptom_text', 10)
+        self.chat_pub = self.create_publisher(String, '/chat_log', 10)
         self.get_logger().info("VoiceInputNode 실행됨")
 
         self.symptom_list = []
@@ -132,6 +133,8 @@ class VoiceInputNode(Node):
             tts.save(fp.name)
             playsound.playsound(fp.name)
 
+        self.chat_pub.publish(String(data=f"[robot] {text}"))
+
     def start_listening(self):
         mic = MicController()
         mic.open_stream()
@@ -139,14 +142,26 @@ class VoiceInputNode(Node):
         wakeup.set_stream(mic.stream)
         stt = STT(self.api_key)
 
+        MAX_FAIL = 3
+        fail_count = 0
+
         while rclpy.ok():
             if wakeup.is_wakeup():
-                self.speak("안녕하세요, 약 이름 또는 증상을 말씀해주세요.")
+                self.speak("안녕하세요, 약 이름 또는 증상을 말씀해주세요." \
+                "종료하려면 '없어요', '아니요' 또는 '종료' 라고 말해주세요." \
+                "10초간 아무 말씀이 없으시면 자동 종료됩니다.")
                 while True:
                     user_input = stt.speech2text()
                     if not user_input:
-                        self.speak("죄송해요. 다시 말씀해주시겠어요?")
+                        fail_count += 1
+                        self.speak("죄송해요. 다시 말씀해주시겠어요? ({fail_count}/{MAX_FAIL})")
+                        if fail_count >= MAX_FAIL:
+                            self.speak("여러 번 이해하지 못했어요. 로봇을 다시 실행해 주세요.")
+                            mic.close_stream()
+                            return
                         continue
+                    
+                    fail_count = 0  # STT 성공 시 초기화
 
                     # 종료 조건 검사
                     if any(kw in user_input for kw in EXIT_KEYWORDS):

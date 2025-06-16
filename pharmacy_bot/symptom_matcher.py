@@ -14,6 +14,8 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 # ROS 2 서비스
 from pharmacy_bot.srv import GetMedicineName
 
+from std_msgs.msg import String
+
 
 class SymptomMatcher(Node):
     def __init__(self):
@@ -34,8 +36,8 @@ class SymptomMatcher(Node):
         self.embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
         self.db = Chroma(persist_directory=db_path, embedding_function=self.embeddings)
         self.retriever = self.db.as_retriever(search_kwargs={"k": 3})
-
         self.service = self.create_service(GetMedicineName, '/get_medicine_name', self.handle_symptom_request)
+        self.result_pub = self.create_publisher(String, '/recommended_drug', 10)
         self.get_logger().info("SymptomMatcher 실행됨 (/get_medicine_name)")
 
     def translate_symptom(self, symptom: str) -> str:
@@ -128,6 +130,8 @@ class SymptomMatcher(Node):
 
             result_text = self.recommend_medicine(symptom, context)
             self.get_logger().info(f"\n=== 약 추천 결과 ===\n{result_text}")
+
+            self.result_pub.publish(String(data=result_text))
 
             drug_name = self.extract_first_drug_name(result_text)
             response.medicine = drug_name

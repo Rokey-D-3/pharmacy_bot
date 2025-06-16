@@ -30,6 +30,8 @@ class PharmacyManager(Node):
         self.detect_position_client = self.create_client(SrvDepthPosition, '/get_3d_position')
         self.pickup_client = self.create_client(PickupMedicine, '/pickup_medicine')
 
+        self.recommend_pub = self.create_publisher(String, '/recommended_drug', 10)
+        
         self.get_logger().info("PharmacyManager 실행됨 — 사용자 입력 대기 중")
 
     def symptom_callback(self, msg: String):
@@ -56,7 +58,11 @@ class PharmacyManager(Node):
             if not recommended:
                 self.get_logger().error("약 추천 실패")
                 return
+            
             self.get_logger().info(f"추천된 약: {recommended}")
+
+            self.recommend_pub.publish(String(data=recommended))
+
             self.process_medicine(recommended)
             return
 
@@ -74,9 +80,9 @@ class PharmacyManager(Node):
         point.x, point.y, point.z = position
         point.orientation.w = 1.0
 
-        self.get_logger().info(f"{medicine_name}의 폭: {width * 10000:.1f}")
+        self.get_logger().info(f"{medicine_name}의 폭: {width:.1f}")
         
-        success = self.call_pickup(point, width * 10000)
+        success = self.call_pickup(point, width)
         if success:
             self.get_logger().info("약 집기 성공")
         else:

@@ -27,6 +27,8 @@ install(
     pharmacy_bot/symptom_matcher_test.py
     pharmacy_bot/symptom_subscriber_test.py
     pharmacy_bot/voice_and_match_test.py
+    pharmacy_bot/pharmacy_gui.py
+    pharmacy_bot/pharmacy_gui_test.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
