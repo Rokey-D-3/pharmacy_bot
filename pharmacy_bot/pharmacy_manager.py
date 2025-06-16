@@ -74,9 +74,9 @@ class PharmacyManager(Node):
         point.x, point.y, point.z = position
         point.orientation.w = 1.0
 
-        self.get_logger().info(f"{medicine_name}의 폭: {width * 1000:.1f} mm")
+        self.get_logger().info(f"{medicine_name}의 폭: {width * 10000:.1f}")
         
-        success = self.call_pickup(point, width * 1000)
+        success = self.call_pickup(point, width * 10000)
         if success:
             self.get_logger().info("약 집기 성공")
         else:
