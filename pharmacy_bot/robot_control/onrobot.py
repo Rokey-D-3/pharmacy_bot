@@ -30,6 +30,15 @@ class RG:
 
     def get_status(self):
         result = self.client.read_holding_registers(address=268, count=1, unit=65)
+        
+        if result.isError():
+            print("Modbus read error:", result)
+            return [None] * 7
+
+        if not hasattr(result, "registers"):
+            print("Unexpected response type:", type(result))
+            return [None] * 7
+        
         status = format(result.registers[0], '016b')
         return [int(status[-(i + 1)]) for i in range(7)]
 
