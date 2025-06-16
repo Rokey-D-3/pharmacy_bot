@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-
+import time
 import os
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, Pose
 
 from pharmacy_bot.srv import GetMedicineName, PickupMedicine, SrvDepthPosition
 
@@ -31,7 +31,6 @@ class PharmacyManager(Node):
         self.pickup_client = self.create_client(PickupMedicine, '/pickup_medicine')
 
         self.get_logger().info("PharmacyManager 실행됨 — 사용자 입력 대기 중")
-
     def symptom_callback(self, msg: String):
         user_input = msg.data.strip()
 
@@ -56,7 +55,11 @@ class PharmacyManager(Node):
             if not recommended:
                 self.get_logger().error("약 추천 실패")
                 return
+            
+            
             self.get_logger().info(f"추천된 약: {recommended}")
+
+
             self.process_medicine(recommended)
             return
 
@@ -64,14 +67,17 @@ class PharmacyManager(Node):
         self.get_logger().info(f"(참고용) 입력 수신: \"{user_input}\"")
 
     def process_medicine(self, medicine_name: str):
+        # print(f'process_medicine에서 medicine은{medicine_name}')
         result = self.call_detect_position(medicine_name)
         if not result:
             self.get_logger().error("약 위치 탐지 실패")
             return
 
         position, width = result
-        point = Point()
-        point.x, point.y, point.z = position
+        print('중간 디버깅')
+        print(position,width)
+        point = Pose()
+        point.position.x, point.position.y, point.position.z = position
         point.orientation.w = 1.0
 
         self.get_logger().info(f"{medicine_name}의 폭: {width * 10000:.1f}")
@@ -90,10 +96,31 @@ class PharmacyManager(Node):
         request = GetMedicineName.Request()
         request.symptom = symptom
         future = self.get_medicine_client.call_async(request)
-        rclpy.spin_until_future_complete(self, future)
+        # time.sleep(10)
+        # print('1111')
+        # print(future.result())
+        
+
+
+        def response_callback(fut):
+            try:
+                result = fut.result()
+                if result and result.medicine:
+                    self.get_logger().info(f"추천된 약: {result.medicine}")
+                    self.process_medicine(result.medicine)
+                else:
+                    self.get_logger().error("약 추천 실패")
+            except Exception as e:
+                self.get_logger().error(f"서비스 응답 처리 중 예외 발생: {e}")
+        future.add_done_callback(response_callback)
+        # rclpy.spin_until_future_complete(self, future)
+        # print('2222')
+
+        self.get_logger().info(future.result())
         return future.result().medicine if future.result() else None
 
     def call_detect_position(self, medicine: str):
+        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         if not self.detect_position_client.wait_for_service(timeout_sec=2.0):
             self.get_logger().error("/get_3d_position 서비스 연결 실패")
             return None
@@ -108,7 +135,7 @@ class PharmacyManager(Node):
             return None
         return result.depth_position, result.width
 
-    def call_pickup(self, point: Point, width: float) -> bool:
+    def call_pickup(self, point: Pose, width: float) -> bool:
         if not self.pickup_client.wait_for_service(timeout_sec=2.0):
             self.get_logger().error("/pickup_medicine 서비스 연결 실패")
             return False
@@ -117,7 +144,20 @@ class PharmacyManager(Node):
         request.point = point
         request.width = width
         future = self.pickup_client.call_async(request)
-        rclpy.spin_until_future_complete(self, future)
+        def response_callback(fut):
+            try:
+                result = fut.result()
+                if result and result.medicine:
+                    self.get_logger().info(f"추천된 약: {result.medicine}")
+                    self.process_medicine(result.medicine)
+                else:
+                    self.get_logger().error("약 추천 실패")
+            except Exception as e:
+                self.get_logger().error(f"서비스 응답 처리 중 예외 발생: {e}")
+        print('11111222')
+        future.add_done_callback(response_callback)
+        # rclpy.spin_until_future_complete(self, future)
+        print('2222233333')
 
         return future.result().success if future.result() else False
 

@@ -5,9 +5,11 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge
-
+from scipy.spatial.transform import Rotation
 # YOLO
 from ultralytics import YOLO
+
+# from DSR_ROBOT2 import get_current_posx
 
 import numpy as np
 import time
@@ -103,7 +105,7 @@ class DetectorNode(Node):
             "포비돈": 0.037,
             "미니온": 0.080,
             "퓨어밴드": 0.073,
-            "rohto c3 cube": 0.062
+            "로토": 0.062
         }
 
         self.get_logger().info("DetectorNode with YOLO + Realsense initialized.")
@@ -113,8 +115,8 @@ class DetectorNode(Node):
         YOLO 모델과 클래스 ID ↔ 이름 매핑 정보를 로드
         """
         package_path = get_package_share_directory("pharmacy_bot")
-        model_path = os.path.join(package_path, "resource", "best.pt")
-        class_path = os.path.join(package_path, "resource", "class_name.json")
+        model_path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/resource/0613_2nd_best_11m.pt")
+        class_path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/resource/class_name.json")
 
         model = YOLO(model_path)
 
@@ -135,41 +137,48 @@ class DetectorNode(Node):
         width = self.medicine_widths.get(target, 0.03)
         response.depth_position = [float(x) for x in coords]
         response.width = float(width)
+        print('서비스 완료')
         return response
 
     def _compute_position(self, target):
         """
-        YOLO 감지 + 중심점 depth → 카메라 기준 3D 좌표 계산
+        YOLO 감지 + 중심점 depth → 로봇 기준 3D 좌표 계산
         """
         rclpy.spin_once(self.img_node)
         frame = self.img_node.get_color_frame()
         if frame is None:
             self.get_logger().warn("No image frame available.")
             return 0.0, 0.0, 0.0
-        
-        # YOLO 추론
+
         results = self.model(frame, verbose=False)
         boxes = self._aggregate_detections(results)
-        
+
         label_id = self.model.reversed_class_dict.get(target, -1)
         matches = [d for d in boxes if d["label"] == label_id]
-
         if not matches:
             self.get_logger().warn("No matching object detected.")
             return 0.0, 0.0, 0.0
-        
-        # 가장 신뢰도 높은 박스 선택
+
         best = max(matches, key=lambda x: x["score"])
         cx, cy = map(int, [(best["box"][0] + best["box"][2]) / 2, (best["box"][1] + best["box"][3]) / 2])
-        
-        # 중심 위치의 depth 값 얻기
+
         cz = self._get_depth(cx, cy)
         if cz is None:
             self.get_logger().warn("Depth unavailable.")
             return 0.0, 0.0, 0.0
 
-        # 픽셀 좌표 + depth → 카메라 3D 좌표로 변환
-        return self._pixel_to_camera_coords(cx, cy, cz)
+        camera_coords = self._pixel_to_camera_coords(cx, cy, cz)
+
+        # 좌표 변환 파일 및 로봇 위치 설정
+
+        gripper2cam_path = '/home/park/ros2_ws/src/pharmacy_bot/resource/T_gripper2camera.npy'
+        # robot_posx = get_current_posx()[0]
+        home_pose=[-140.48, -34.46, 146, 95.15, 49.70, -19.84]  # 홈 위치 조인트값
+        home_posx = [-80, -422.38, 276.88, 90, -100, -90]
+        target_pose = self.transform_to_base(camera_coords, gripper2cam_path, home_posx)
+        print('target_pose : ', target_pose)
+        return target_pose
+
 
     def _aggregate_detections(self, results, conf_thresh=0.5, iou_thresh=0.5):
         """
@@ -194,7 +203,31 @@ class DetectorNode(Node):
             return frame[y, x]
         except IndexError:
             return None
+        
+    def transform_to_base(self, camera_coords, gripper2cam_path, robot_pos):
+        """
+        Converts 3D coordinates from the camera coordinate system
+        to the robot's base coordinate system.
+        """
+        gripper2cam = np.load(gripper2cam_path)
+        coord = np.append(np.array(camera_coords), 1)  # Homogeneous coordinate
 
+        x, y, z, rx, ry, rz = robot_pos
+        base2gripper = self.get_robot_pose_matrix(x, y, z, rx, ry, rz)
+
+        # 좌표 변환 (그리퍼 → 베이스)
+        base2cam = base2gripper @ gripper2cam
+        td_coord = np.dot(base2cam, coord)
+
+        return td_coord[:3]
+
+    def get_robot_pose_matrix(self, x, y, z, rx, ry, rz):
+        R = Rotation.from_euler("ZYZ", [rx, ry, rz], degrees=True).as_matrix()
+        T = np.eye(4)
+        T[:3, :3] = R
+        T[:3, 3] = [x, y, z]
+        return T
+    
     def _pixel_to_camera_coords(self, x, y, z):
         """픽셀 좌표 + depth → 카메라 좌표계 변환 (x, y, z in meters)"""
         fx = self.intrinsics['fx']

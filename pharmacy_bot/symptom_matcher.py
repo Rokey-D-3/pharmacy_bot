@@ -19,7 +19,7 @@ class SymptomMatcher(Node):
     def __init__(self):
         super().__init__('symptom_matcher')
 
-        env_path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/.env")
+        env_path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/resource/.env")
         loaded = load_dotenv(dotenv_path=env_path)
         if not loaded:
             self.get_logger().warn(f".env 파일을 찾을 수 없습니다: {env_path}")
@@ -89,7 +89,7 @@ class SymptomMatcher(Node):
             {context}
 
             출력 형식:
-            약 이름: [약 이름1, 약 이름2, ...
+            약 이름: "약이름1 약이름2 ..."
             복용 방법 및 주의 사항:
             - 약 이름1: (복용 방법)
             """
@@ -97,17 +97,20 @@ class SymptomMatcher(Node):
         result = self.llm.invoke(prompt.format(symptom=symptom, context=context))
         return result.content.strip()
 
-    def extract_first_drug_name(self, text: str) -> str:
+    def extract_drug_name(self, text: str) -> str:
         try:
-            name_section = text.split("약 이름:")[1].split("]")[0]
-            drug_list = name_section.replace("[", "").split(",")
-            return drug_list[0].strip()
+            # '약 이름: ' 다음에 오는 큰따옴표 내부 텍스트 추출
+            start = text.index("약 이름:") + len("약 이름:")
+            quote_start = text.index('"', start)
+            quote_end = text.index('"', quote_start + 1)
+            drug_names = text[quote_start + 1:quote_end].strip()
+            return drug_names  # 예: "모드콜 타이레놀"
         except Exception as e:
             self.get_logger().error(f"약 이름 추출 실패: {e}")
             return "추천 실패"
 
     def handle_symptom_request(self, request, response):
-        symptom_path = os.path.expanduser("/home/choin/ros2_ws/src/pharmacy_bot/resource/symptom_query.txt")
+        symptom_path = os.path.expanduser("~/ros2_ws/src/pharmacy_bot/resource/symptom_query.txt")
         try:
             with open(symptom_path, "r", encoding="utf-8") as f:
                 symptom = f.read().strip()
@@ -129,12 +132,13 @@ class SymptomMatcher(Node):
             result_text = self.recommend_medicine(symptom, context)
             self.get_logger().info(f"\n=== 약 추천 결과 ===\n{result_text}")
 
-            drug_name = self.extract_first_drug_name(result_text)
+            drug_name = self.extract_drug_name(result_text)
             response.medicine = drug_name
         except Exception as e:
             self.get_logger().error(f"추천 중 오류 발생: {e}")
             response.medicine = "추천 실패"
-
+        print(response.medicine)
+        print('추천 완료!!')
         return response
 
 

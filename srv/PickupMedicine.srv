@@ -1,4 +1,4 @@
-geometry_msgs/Point point
-float32 width
+geometry_msgs/Pose point
+float64 width
 ---
 bool success
